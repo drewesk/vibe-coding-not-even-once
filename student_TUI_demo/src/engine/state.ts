@@ -1,4 +1,4 @@
-import { AgentConfig, StoredState } from '../types'
+import type { AgentConfig, StoredState } from '../types'
 
 export const defaultAgentConfig: AgentConfig = {
   initialized: false,

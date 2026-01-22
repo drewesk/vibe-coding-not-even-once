@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { StoredState } from '../types'
+import type { StoredState } from '../types'
 import { defaultState } from './state'
 import { loadStoredState, saveStoredState } from './storage'
 

@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
-import { StoredState } from '../types'
+import type { StoredState } from '../types'
 import { getStoryStep } from '../engine/story'
 import { planCommand } from '../engine/commandEngine'
 
@@ -12,7 +12,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 type TerminalPanelProps = {
   state: StoredState
-  setState: React.Dispatch<React.SetStateAction<StoredState>>
+  setState: Dispatch<SetStateAction<StoredState>>
   resetState: () => void
 }
 

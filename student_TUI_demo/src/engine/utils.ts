@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types'
+import type { AgentConfig } from '../types'
 
 export const getArtifactName = (config: AgentConfig) => {
   const base = config.name?.trim() || 'agent'

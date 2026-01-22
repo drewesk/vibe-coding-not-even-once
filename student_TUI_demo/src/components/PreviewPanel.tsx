@@ -1,10 +1,11 @@
-import { StoredState } from '../types'
+import type { Dispatch, SetStateAction } from 'react'
+import type { StoredState } from '../types'
 import { formatAgentName, getArtifactName } from '../engine/utils'
 import AgentRuntime from './AgentRuntime'
 
 type PreviewPanelProps = {
   state: StoredState
-  setState: React.Dispatch<React.SetStateAction<StoredState>>
+  setState: Dispatch<SetStateAction<StoredState>>
 }
 
 const PreviewPanel = ({ state, setState }: PreviewPanelProps) => {

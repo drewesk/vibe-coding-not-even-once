@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { StoredState } from '../types'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import type { StoredState } from '../types'
 import { formatAgentName } from '../engine/utils'
 import { getAgentResponse } from '../services/llmAdapter'
 
 type AgentRuntimeProps = {
   state: StoredState
-  setState: React.Dispatch<React.SetStateAction<StoredState>>
+  setState: Dispatch<SetStateAction<StoredState>>
 }
 
 const AgentRuntime = ({ state, setState }: AgentRuntimeProps) => {

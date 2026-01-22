@@ -1,4 +1,4 @@
-import { StoredState } from '../types'
+import type { StoredState } from '../types'
 import { defaultState } from './state'
 import { getStoryStep, storySteps } from './story'
 

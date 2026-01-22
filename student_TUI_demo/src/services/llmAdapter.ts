@@ -1,4 +1,4 @@
-import { AgentConfig, ChatMessage } from '../types'
+import type { AgentConfig, ChatMessage } from '../types'
 
 const summarizerReply = (input: string) =>
   `Summary: ${input.slice(0, 120)}${input.length > 120 ? '…' : ''}`
