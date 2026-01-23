@@ -48,6 +48,12 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         foreground: '#5dffb6',
         cursor: '#7afcff',
         selectionBackground: '#0f2b45',
+        red: '#ff4d6d',
+        yellow: '#ffe08a',
+        cyan: '#4ff1ff',
+        brightRed: '#ff6b86',
+        brightYellow: '#fff2b2',
+        brightCyan: '#7afcff',
       },
     })
 
@@ -63,7 +69,12 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     const handleResize = () => fitAddon.fit()
     window.addEventListener('resize', handleResize)
 
-    const writeLine = (line: string) => terminal.writeln(line)
+    const scrollToBottom = () => terminal.scrollToBottom()
+
+    const writeLine = (line: string) => {
+      terminal.writeln(line)
+      scrollToBottom()
+    }
 
     const typeLine = async (line: string, charDelay: number) => {
       for (const char of line) {
@@ -71,6 +82,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         await sleep(charDelay)
       }
       terminal.write('\r\n')
+      scrollToBottom()
     }
 
     const streamLines = async (
@@ -84,7 +96,10 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       }
     }
 
-    const writePrompt = () => terminal.write(PROMPT)
+    const writePrompt = () => {
+      terminal.write(PROMPT)
+      scrollToBottom()
+    }
 
     const renderStoryPrompt = async (storyIndex: number) => {
       const step = getStoryStep(storyIndex)
@@ -96,11 +111,18 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
 
     const handleCommand = async (command: string) => {
       const plan = planCommand(command, stateRef.current)
+      const nextStep = getStoryStep(plan.nextState.storyIndex)
 
       if (plan.resetTerminal) {
         terminal.reset()
         resetState()
         stateRef.current = plan.nextState
+      } else if (plan.showStoryPrompt) {
+        const promptLines = nextStep.promptLines.length
+        const isFullScreen = promptLines >= Math.max(terminal.rows - 2, 0)
+        if (nextStep.forceClear || isFullScreen) {
+          terminal.clear()
+        }
       }
 
       for (const output of plan.outputs) {

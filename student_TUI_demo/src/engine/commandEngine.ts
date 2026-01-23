@@ -2,6 +2,14 @@ import type { StoredState } from '../types'
 import { defaultState } from './state'
 import { getStoryStep, storySteps } from './story'
 
+const ANSI_RESET = '\u001b[0m'
+const ANSI_CYAN = '\u001b[36m'
+const ANSI_YELLOW = '\u001b[93m'
+
+const colorize = (value: string, color: string) => `${color}${value}${ANSI_RESET}`
+const formatStory = (text: string) => colorize(text, ANSI_CYAN)
+const formatAlt = (text: string) => colorize(text, ANSI_YELLOW)
+
 export type OutputStep = {
   lines: string[]
   delay?: number
@@ -121,7 +129,13 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
   if (!parsed) {
     return {
       nextState: state,
-      outputs: [{ lines: ['Unknown command. Type "help".'] }],
+      outputs: [
+        {
+          lines: [
+            formatAlt('Unknown command. Type "help" for the training list.'),
+          ],
+        },
+      ],
       showStoryPrompt: true,
       resetTerminal: false,
     }
@@ -130,7 +144,14 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
   if (parsed.id === 'reset') {
     return {
       nextState: defaultState,
-      outputs: [{ lines: ['System reset.', 'Story mode restarted.'] }],
+      outputs: [
+        {
+          lines: [
+            formatAlt('System reset.'),
+            formatStory('Story mode restarted. Training bay rebooted.'),
+          ],
+        },
+      ],
       showStoryPrompt: true,
       resetTerminal: true,
     }
@@ -140,8 +161,9 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     return {
       nextState: state,
       outputs: [
-        { lines: helpLines },
-        { lines: [`Story hint: ${step.hint}`] },
+        { lines: helpLines.map((line) => formatAlt(line)) },
+        { lines: [formatAlt(`Story hint: ${step.hint}`)] },
+        { lines: [formatAlt('Tip: follow the prompts to advance.')] },
       ],
       showStoryPrompt: false,
       resetTerminal: false,
@@ -152,8 +174,8 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     return {
       nextState: state,
       outputs: [
-        { lines: ['Story mode lock: follow the mission order.'] },
-        { lines: [`Try: ${step.hint}`] },
+        { lines: [formatStory('Story mode lock: follow the mission order.')] },
+        { lines: [formatAlt(`Try: ${step.hint}`)] },
       ],
       showStoryPrompt: true,
       resetTerminal: false,
@@ -170,26 +192,51 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     nextState.agentConfig.initialized = true
     nextState.agentConfig.built = false
     nextState.runtimeOpen = false
-    outputs.push({ lines: ['Agent workspace created.', 'Subsystems online.'] })
+    outputs.push({
+      lines: [
+        formatStory('Scaffolding workspace...'),
+        formatStory('Created: agent.config.json'),
+        formatStory('Created: prompts/system.txt'),
+        formatStory('Created: runtime/preview.stub'),
+        formatStory('Subsystems online.'),
+      ],
+    })
   }
 
   if (parsed.id === 'set-name') {
     const name = parsed.value?.trim() ?? ''
     nextState.agentConfig.name = name || null
-    outputs.push({ lines: [`Name locked: ${name || 'unknown'}.`] })
+    outputs.push({
+      lines: [
+        formatStory(`Name locked: ${name || 'unknown'}.`),
+        formatStory(`Bundle id: ${name ? `${name}-agent` : 'unknown-agent'}.`),
+      ],
+    })
   }
 
   if (parsed.id === 'set-task') {
     const task = parsed.value?.trim() ?? ''
     nextState.agentConfig.task = task || null
-    outputs.push({ lines: [`Mission profile: ${task || 'unknown'}.`] })
+    outputs.push({
+      lines: [
+        formatStory(`Mission profile: ${task || 'unknown'}.`),
+        formatStory('Prompt template updated in prompts/system.txt.'),
+      ],
+    })
   }
 
   if (parsed.id === 'set-memory') {
     nextState.agentConfig.memory = parsed.value === 'on'
     outputs.push({
       lines: [
-        `Memory module: ${nextState.agentConfig.memory ? 'online' : 'offline'}.`,
+        formatStory(
+          `Memory module: ${nextState.agentConfig.memory ? 'online' : 'offline'}.`,
+        ),
+        formatStory(
+          nextState.agentConfig.memory
+            ? 'Storage ready: memory/session.log'
+            : 'Storage disabled: sessions will be stateless.',
+        ),
       ],
     })
   }
@@ -205,8 +252,8 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         outputs: [
           {
             lines: [
-              'Build failed: missing config.',
-              'Complete init, name, and task first.',
+              formatAlt('Build failed: missing config.'),
+              formatAlt('Complete init, name, and task first.'),
             ],
           },
         ],
@@ -215,10 +262,11 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       }
     }
 
-    outputs.push({ lines: ['Compiling agent core...'], delay: 200 })
-    outputs.push({ lines: ['Linking memory module...'], delay: 500 })
-    outputs.push({ lines: ['Packaging binary...'], delay: 600 })
-    outputs.push({ lines: ['Build successful. Artifact created.'], delay: 400 })
+    outputs.push({ lines: [formatStory('Compiling agent core...')], delay: 200 })
+    outputs.push({ lines: [formatStory('Linking memory module...')], delay: 400 })
+    outputs.push({ lines: [formatStory('Bundling prompt template...')], delay: 400 })
+    outputs.push({ lines: [formatStory('Writing build output: dist/agent.bundle')], delay: 500 })
+    outputs.push({ lines: [formatStory('Build successful. Artifact created.')], delay: 300 })
     nextState.agentConfig.built = true
   }
 
@@ -226,12 +274,18 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     if (!nextState.agentConfig.built) {
       return {
         nextState: state,
-        outputs: [{ lines: ['Run blocked: build the agent first.'] }],
+        outputs: [{ lines: [formatAlt('Run blocked: build the agent first.')] }],
         showStoryPrompt: true,
         resetTerminal: false,
       }
     }
-    outputs.push({ lines: ['Launching runtime preview...'], delay: 200 })
+    outputs.push({
+      lines: [
+        formatStory('Launching runtime preview...'),
+        formatStory('Preview bay online. Awaiting first prompt.'),
+      ],
+      delay: 200,
+    })
     nextState.runtimeOpen = true
   }
 
