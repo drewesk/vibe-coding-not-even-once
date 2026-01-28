@@ -25,7 +25,7 @@ export const storySteps: StoryStep[] = [
       formatStory('We will generate a config, prompt template, and runtime shell.'),
       formatStory('Notice how the CLI mirrors real project bootstrapping.'),
       formatRun('init agent'),
-      formatAlt('Alt: help | reset'),
+      formatAlt('Alt: help | reset | bonus'),
     ],
     hint: 'init agent',
     expects: (command) => command === 'init-agent',

@@ -13,4 +13,10 @@ export const defaultState: StoredState = {
   storyIndex: 0,
   runtimeOpen: false,
   messages: [],
+  matrix: {
+    enabled: false,
+    mode: 'calm',
+    speed: 2,
+    density: 2,
+  },
 }

@@ -6,6 +6,15 @@ export type AgentConfig = {
   built: boolean
 }
 
+export type MatrixMode = 'calm' | 'pulse' | 'storm'
+
+export type MatrixSettings = {
+  enabled: boolean
+  mode: MatrixMode
+  speed: number
+  density: number
+}
+
 export type ChatMessage = {
   role: 'user' | 'agent'
   content: string
@@ -16,4 +25,5 @@ export type StoredState = {
   storyIndex: number
   runtimeOpen: boolean
   messages: ChatMessage[]
+  matrix: MatrixSettings
 }

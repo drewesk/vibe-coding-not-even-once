@@ -18,6 +18,7 @@ export const loadStoredState = (): StoredState => {
       ...defaultState,
       ...parsed,
       agentConfig: { ...defaultState.agentConfig, ...parsed.agentConfig },
+      matrix: { ...defaultState.matrix, ...parsed.matrix },
     }
   } catch (error) {
     console.warn('Failed to load saved state', error)

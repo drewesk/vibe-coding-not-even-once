@@ -10,6 +10,9 @@ const colorize = (value: string, color: string) => `${color}${value}${ANSI_RESET
 const formatStory = (text: string) => colorize(text, ANSI_CYAN)
 const formatAlt = (text: string) => colorize(text, ANSI_YELLOW)
 
+const clampRange = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max)
+
 export type OutputStep = {
   lines: string[]
   delay?: number
@@ -103,9 +106,81 @@ const commandDefinitions: CommandDefinition[] = [
     match: (raw, normalized) =>
       normalized === 'reset lesson' ? { id: 'reset-lesson', raw } : null,
   },
+  {
+    id: 'bonus',
+    usage: 'bonus',
+    match: (raw, normalized) =>
+      normalized === 'bonus' ? { id: 'bonus', raw } : null,
+  },
+  {
+    id: 'matrix-status',
+    usage: 'matrix',
+    match: (raw, normalized) =>
+      normalized === 'matrix' || normalized === 'matrix status'
+        ? { id: 'matrix-status', raw }
+        : null,
+  },
+  {
+    id: 'matrix-toggle',
+    usage: 'matrix on/off',
+    match: (raw, normalized) => {
+      if (normalized === 'matrix on') {
+        return { id: 'matrix-toggle', raw, value: 'on' }
+      }
+      if (normalized === 'matrix off') {
+        return { id: 'matrix-toggle', raw, value: 'off' }
+      }
+      return null
+    },
+  },
+  {
+    id: 'matrix-mode',
+    usage: 'matrix mode calm|pulse|storm',
+    match: (raw, normalized) =>
+      normalized.startsWith('matrix mode ')
+        ? { id: 'matrix-mode', raw, value: normalized.slice('matrix mode '.length).trim() }
+        : null,
+  },
+  {
+    id: 'matrix-speed',
+    usage: 'matrix speed <1-5>',
+    match: (raw, normalized) =>
+      normalized.startsWith('matrix speed ')
+        ? { id: 'matrix-speed', raw, value: normalized.slice('matrix speed '.length).trim() }
+        : null,
+  },
+  {
+    id: 'matrix-density',
+    usage: 'matrix density <1-5>',
+    match: (raw, normalized) =>
+      normalized.startsWith('matrix density ')
+        ? { id: 'matrix-density', raw, value: normalized.slice('matrix density '.length).trim() }
+        : null,
+  },
 ]
 
-const helpLines = ['Available commands:', ...commandDefinitions.map((entry) => entry.usage)]
+const helpLines = [
+  'Available commands:',
+  ...commandDefinitions
+    .filter((entry) => !entry.id.startsWith('matrix') && entry.id !== 'bonus')
+    .map((entry) => entry.usage),
+]
+
+const bonusLines = [
+  'Bonus menu: Matrix Rain Controls',
+  'matrix on/off',
+  'matrix mode calm|pulse|storm',
+  'matrix speed <1-5>',
+  'matrix density <1-5>',
+  'matrix status',
+]
+
+const matrixStatusLines = (state: StoredState) => [
+  `Matrix rain: ${state.matrix.enabled ? 'on' : 'off'}`,
+  `Mode: ${state.matrix.mode}`,
+  `Speed: ${state.matrix.speed}`,
+  `Density: ${state.matrix.density}`,
+]
 
 const parseCommand = (raw: string) => {
   const normalized = raw.toLowerCase()
@@ -198,6 +273,100 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         { lines: [formatAlt(`Story hint: ${step.hint}`)] },
         { lines: [formatAlt('Tip: follow the prompts to advance.')] },
       ],
+      showStoryPrompt: false,
+      resetTerminal: false,
+    }
+  }
+
+  if (parsed.id === 'bonus') {
+    return {
+      nextState: state,
+      outputs: [
+        { lines: bonusLines.map((line) => formatAlt(line)) },
+        { lines: matrixStatusLines(state).map((line) => formatAlt(line)) },
+      ],
+      showStoryPrompt: false,
+      resetTerminal: false,
+    }
+  }
+
+  if (parsed.id.startsWith('matrix')) {
+    let nextState = state
+    const outputs: OutputStep[] = []
+    const modeChoices: Array<StoredState['matrix']['mode']> = ['calm', 'pulse', 'storm']
+
+    if (parsed.id === 'matrix-status') {
+      outputs.push({ lines: matrixStatusLines(state).map((line) => formatAlt(line)) })
+      return {
+        nextState: state,
+        outputs,
+        showStoryPrompt: false,
+        resetTerminal: false,
+      }
+    }
+
+    if (parsed.id === 'matrix-toggle') {
+      const enabled = parsed.value === 'on'
+      nextState = { ...state, matrix: { ...state.matrix, enabled } }
+      outputs.push({
+        lines: [formatStory(`Matrix rain ${enabled ? 'enabled' : 'disabled'}.`)],
+      })
+    }
+
+    if (parsed.id === 'matrix-mode') {
+      const modeValue = (parsed.value ?? '').toLowerCase()
+      if (!modeChoices.includes(modeValue as StoredState['matrix']['mode'])) {
+        return {
+          nextState: state,
+          outputs: [
+            {
+              lines: [
+                formatAlt('Matrix mode invalid. Use calm, pulse, or storm.'),
+              ],
+            },
+          ],
+          showStoryPrompt: false,
+          resetTerminal: false,
+        }
+      }
+      const mode = modeValue as StoredState['matrix']['mode']
+      nextState = { ...state, matrix: { ...state.matrix, mode } }
+      outputs.push({ lines: [formatStory(`Matrix mode set to ${mode}.`)] })
+    }
+
+    if (parsed.id === 'matrix-speed') {
+      const value = Number(parsed.value)
+      if (Number.isNaN(value)) {
+        return {
+          nextState: state,
+          outputs: [{ lines: [formatAlt('Matrix speed expects a number (1-5).')] }],
+          showStoryPrompt: false,
+          resetTerminal: false,
+        }
+      }
+      const speedValue = Number(clampRange(value, 1, 5).toFixed(2))
+      nextState = { ...state, matrix: { ...state.matrix, speed: speedValue } }
+      outputs.push({ lines: [formatStory(`Matrix speed set to ${speedValue}.`)] })
+    }
+
+    if (parsed.id === 'matrix-density') {
+      const value = Number(parsed.value)
+      if (Number.isNaN(value)) {
+        return {
+          nextState: state,
+          outputs: [{ lines: [formatAlt('Matrix density expects a number (1-5).')] }],
+          showStoryPrompt: false,
+          resetTerminal: false,
+        }
+      }
+      const densityValue = Number(clampRange(value, 1, 5).toFixed(2))
+      nextState = { ...state, matrix: { ...state.matrix, density: densityValue } }
+      outputs.push({ lines: [formatStory(`Matrix density set to ${densityValue}.`)] })
+    }
+
+    return {
+      nextState,
+      outputs,
       showStoryPrompt: false,
       resetTerminal: false,
     }
