@@ -113,7 +113,7 @@ export const storySteps: StoryStep[] = [
       formatStory('   Next: Try a real lesson prompt'),
       formatStory(''),
       formatStory('   Example: "Summarize chapter 3"'),
-      formatAlt('Alt: reset'),
+      formatAlt('Alt: reset lesson'),
     ],
     hint: 'run',
     expects: () => false,

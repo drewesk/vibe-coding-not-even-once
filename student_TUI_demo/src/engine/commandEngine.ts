@@ -97,6 +97,12 @@ const commandDefinitions: CommandDefinition[] = [
     match: (raw, normalized) =>
       normalized === 'reset' ? { id: 'reset', raw } : null,
   },
+  {
+    id: 'reset-lesson',
+    usage: 'reset lesson',
+    match: (raw, normalized) =>
+      normalized === 'reset lesson' ? { id: 'reset-lesson', raw } : null,
+  },
 ]
 
 const helpLines = ['Available commands:', ...commandDefinitions.map((entry) => entry.usage)]
@@ -148,6 +154,33 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         {
           lines: [
             formatAlt('System reset.'),
+            formatStory('Story mode restarted. Training bay rebooted.'),
+          ],
+        },
+      ],
+      showStoryPrompt: true,
+      resetTerminal: true,
+    }
+  }
+
+  if (parsed.id === 'reset-lesson') {
+    if (state.storyIndex !== storySteps.length - 1) {
+      return {
+        nextState: state,
+        outputs: [
+          { lines: [formatAlt('Reset lesson is available only at final step.')] },
+        ],
+        showStoryPrompt: true,
+        resetTerminal: false,
+      }
+    }
+
+    return {
+      nextState: defaultState,
+      outputs: [
+        {
+          lines: [
+            formatAlt('Lesson reset.'),
             formatStory('Story mode restarted. Training bay rebooted.'),
           ],
         },

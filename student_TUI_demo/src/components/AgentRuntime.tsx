@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { StoredState } from '../types'
 import { formatAgentName } from '../engine/utils'
 import { getAgentResponse } from '../services/llmAdapter'
@@ -12,6 +14,7 @@ const AgentRuntime = ({ state, setState }: AgentRuntimeProps) => {
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const logRef = useRef<HTMLDivElement | null>(null)
+
 
   useEffect(() => {
     if (logRef.current) {
@@ -73,7 +76,11 @@ const AgentRuntime = ({ state, setState }: AgentRuntimeProps) => {
               <span className="runtime__role">
                 {message.role === 'user' ? 'You' : 'Agent'}
               </span>
-              {message.content}
+              <div className="runtime__content">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
           ))
         )}
