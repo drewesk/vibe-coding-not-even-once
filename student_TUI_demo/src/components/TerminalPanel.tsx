@@ -5,7 +5,6 @@ import '@xterm/xterm/css/xterm.css'
 import type { StoredState } from '../types'
 import { getStoryStep } from '../engine/story'
 import { planCommand } from '../engine/commandEngine'
-import MatrixRain from './MatrixRain'
 
 const PROMPT = '> '
 
@@ -209,12 +208,6 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         <div className="terminal__status">Story mode online</div>
       </div>
       <div className="terminal__body">
-        <MatrixRain
-          enabled={state.matrix.enabled}
-          mode={state.matrix.mode}
-          speed={state.matrix.speed}
-          density={state.matrix.density}
-        />
         <div className="terminal__xterm" ref={containerRef} />
       </div>
     </section>

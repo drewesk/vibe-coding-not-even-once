@@ -6,6 +6,7 @@ type MatrixRainProps = {
   mode: MatrixMode
   speed: number
   density: number
+  className?: string
 }
 
 const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*+-'
@@ -25,7 +26,7 @@ const modeColor: Record<MatrixMode, [number, number, number]> = {
 const clampRange = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
-const MatrixRain = ({ enabled, mode, speed, density }: MatrixRainProps) => {
+const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const dropsRef = useRef<number[]>([])
   const activeRef = useRef<boolean[]>([])
@@ -185,7 +186,7 @@ const MatrixRain = ({ enabled, mode, speed, density }: MatrixRainProps) => {
     return () => cancelAnimationFrame(frameId)
   }, [])
 
-  return <canvas ref={canvasRef} className="terminal__matrix" />
+  return <canvas ref={canvasRef} className={className ?? 'terminal__matrix'} />
 }
 
 export default MatrixRain
