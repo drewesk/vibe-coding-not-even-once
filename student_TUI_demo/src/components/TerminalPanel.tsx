@@ -4,8 +4,9 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { StoredState } from '../types'
 import { getStoryStep } from '../engine/story'
-import { planCommand } from '../engine/commandEngine'
+import { baseCommands, planCommand } from '../engine/commandEngine'
 import { highlightBaseLine } from '../engine/terminalFormat'
+import { getNodeAtPath, resolvePath } from '../engine/baseFs'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -45,6 +46,63 @@ const baseTheme = {
   brightWhite: '#fdf6e3',
 }
 
+const MAX_HISTORY = 200
+
+const getCommandCandidates = (buffer: string) => {
+  const leading = buffer.match(/^\s*/)?.[0] ?? ''
+  const fragment = buffer.slice(leading.length)
+  if (fragment.includes(' ')) {
+    return []
+  }
+  return baseCommands
+    .filter((command) => command.startsWith(fragment))
+    .map((command) => `${leading}${command}`)
+}
+
+const getPathCandidates = (buffer: string, state: StoredState) => {
+  const lastSpace = buffer.lastIndexOf(' ')
+  if (lastSpace === -1) {
+    return []
+  }
+  const basePrefix = buffer.slice(0, lastSpace + 1)
+  const fragment = buffer.slice(lastSpace + 1)
+  if (fragment.startsWith('-')) {
+    return []
+  }
+
+  let dirInput = '.'
+  let partial = fragment
+  let prefix = ''
+  if (fragment.includes('/')) {
+    const lastSlash = fragment.lastIndexOf('/')
+    prefix = fragment.slice(0, lastSlash + 1)
+    dirInput = fragment.slice(0, lastSlash) || '/'
+    partial = fragment.slice(lastSlash + 1)
+  }
+
+  const dirPath = resolvePath(state.base.cwd, dirInput)
+  const node = getNodeAtPath(state.base.fs, dirPath)
+  if (!node || node.type !== 'dir') {
+    return []
+  }
+
+  return Object.keys(node.children)
+    .filter((name) => name.startsWith(partial))
+    .sort()
+    .map((name) => {
+      const child = node.children[name]
+      const suffix = child.type === 'dir' ? '/' : ''
+      return `${basePrefix}${prefix}${name}${suffix}`
+    })
+}
+
+const getAutocompleteCandidates = (buffer: string, state: StoredState) => {
+  if (buffer.includes(' ')) {
+    return getPathCandidates(buffer, state)
+  }
+  return getCommandCandidates(buffer)
+}
+
 type TerminalPanelProps = {
   state: StoredState
   setState: Dispatch<SetStateAction<StoredState>>
@@ -70,6 +128,13 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
   const bufferRef = useRef('')
   const busyRef = useRef(false)
   const stateRef = useRef(state)
+  const historyRef = useRef<string[]>([])
+  const autocompleteRef = useRef({
+    active: false,
+    candidates: [] as string[],
+    index: -1,
+    original: '',
+  })
 
   useEffect(() => {
     stateRef.current = state
@@ -159,6 +224,29 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     }
 
     const handleCommand = async (command: string) => {
+      const trimmedCommand = command.trim()
+      const isBaseMode = stateRef.current.mode === 'base'
+      const isHistoryCommand = isBaseMode && trimmedCommand === 'history'
+
+      if (isHistoryCommand) {
+        if (historyRef.current.length === 0) {
+          writeLine('History empty.')
+        } else {
+          historyRef.current.forEach((entry, index) => {
+            writeLine(`${index + 1}  ${entry}`)
+          })
+        }
+        writePrompt()
+        return
+      }
+
+      if (isBaseMode && trimmedCommand !== '') {
+        historyRef.current.push(command)
+        if (historyRef.current.length > MAX_HISTORY) {
+          historyRef.current.shift()
+        }
+      }
+
       const plan = planCommand(command, stateRef.current)
       const nextStep = getStoryStep(plan.nextState.storyIndex)
 
@@ -176,6 +264,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         terminal.reset()
         resetState()
         stateRef.current = plan.nextState
+        historyRef.current = []
       } else if (didModeChange) {
         terminal.clear()
       } else if (plan.clearTerminal) {
@@ -198,7 +287,10 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         if (lines.length === 0) {
           continue
         }
-        if (output.stream) {
+        const shouldStream =
+          output.stream ??
+          (stateRef.current.mode === 'story' && output.lines.length > 1)
+        if (shouldStream) {
           await streamLines(
             lines,
             output.charDelay ?? 16,
@@ -221,6 +313,61 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       }
     }
 
+    const resetAutocomplete = () => {
+      autocompleteRef.current = {
+        active: false,
+        candidates: [],
+        index: -1,
+        original: '',
+      }
+    }
+
+    const renderBuffer = (buffer: string) => {
+      terminal.write('\u001b[?25l')
+      terminal.write('\u001b[2K\r')
+      terminal.write(`${getPrompt(stateRef.current)}${buffer}`)
+      terminal.write('\u001b[?25h')
+      bufferRef.current = buffer
+    }
+
+    const handleAutocomplete = (direction: 'next' | 'prev') => {
+      if (stateRef.current.mode !== 'base') {
+        return false
+      }
+
+      const auto = autocompleteRef.current
+      if (!auto.active) {
+        const candidates = getAutocompleteCandidates(bufferRef.current, stateRef.current)
+        if (candidates.length === 0) {
+          return true
+        }
+        auto.active = true
+        auto.candidates = candidates
+        auto.index = -1
+        auto.original = bufferRef.current
+      }
+
+      if (auto.candidates.length === 0) {
+        return true
+      }
+
+      if (direction === 'next') {
+        auto.index += 1
+        if (auto.index >= auto.candidates.length) {
+          auto.index = -1
+        }
+      } else {
+        auto.index -= 1
+        if (auto.index < -1) {
+          auto.index = auto.candidates.length - 1
+        }
+      }
+
+      const nextBuffer = auto.index === -1 ? auto.original : auto.candidates[auto.index]
+      renderBuffer(nextBuffer)
+      return true
+    }
+
     const onData = (data: string) => {
       if (busyRef.current) {
         return
@@ -230,6 +377,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         const command = bufferRef.current
         bufferRef.current = ''
         terminal.write('\r\n')
+        resetAutocomplete()
         busyRef.current = true
         handleCommand(command)
           .catch((error) => {
@@ -246,13 +394,34 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         if (bufferRef.current.length > 0) {
           bufferRef.current = bufferRef.current.slice(0, -1)
           terminal.write('\b \b')
+          resetAutocomplete()
         }
         return
+      }
+
+      if (stateRef.current.mode === 'base') {
+        if (data === '\t') {
+          handleAutocomplete('next')
+          return
+        }
+
+        if (data === '\u001b[A') {
+          if (handleAutocomplete('next')) {
+            return
+          }
+        }
+
+        if (data === '\u001b[B') {
+          if (handleAutocomplete('prev')) {
+            return
+          }
+        }
       }
 
       if (isPrintable(data)) {
         bufferRef.current += data
         terminal.write(data)
+        resetAutocomplete()
       }
     }
 
@@ -277,6 +446,12 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       return
     }
     terminal.options.theme = state.mode === 'base' ? baseTheme : storyTheme
+    autocompleteRef.current = {
+      active: false,
+      candidates: [],
+      index: -1,
+      original: '',
+    }
   }, [state.mode])
 
   return (

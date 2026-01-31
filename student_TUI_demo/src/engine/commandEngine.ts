@@ -203,11 +203,16 @@ const baseCommandUsages = [
   'tail <file> [n]',
   'wc <file>',
   'grep <pattern> <file>',
+  'history',
   'whoami',
   'date',
   'uname',
   'clear',
 ]
+
+export const baseCommands = Array.from(
+  new Set(baseCommandUsages.map((usage) => usage.split(' ')[0])),
+)
 
 const baseHelpLines = ['Base mode commands:', ...baseCommandUsages]
 
