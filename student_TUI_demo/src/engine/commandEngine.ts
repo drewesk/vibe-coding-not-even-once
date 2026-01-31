@@ -9,7 +9,7 @@ import {
   getParentDir,
   resolvePath,
 } from './baseFs'
-import { formatAlt, formatError, formatStory } from './terminalFormat'
+import { formatAlt, formatError, formatOutput, formatStory } from './terminalFormat'
 
 const clampRange = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
@@ -735,7 +735,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         {
           lines: [
             formatAlt('System reset.'),
-            formatStory('Story mode restarted. Training bay rebooted.'),
+            formatOutput('Story mode restarted. Training bay rebooted.'),
           ],
         },
       ],
@@ -764,7 +764,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         {
           lines: [
             formatAlt('Lesson reset.'),
-            formatStory('Story mode restarted. Training bay rebooted.'),
+            formatOutput('Story mode restarted. Training bay rebooted.'),
           ],
         },
       ],
@@ -821,7 +821,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       const enabled = parsed.value === 'on'
       nextState = { ...state, matrix: { ...state.matrix, enabled } }
       outputs.push({
-        lines: [formatStory(`Matrix rain ${enabled ? 'enabled' : 'disabled'}.`)],
+        lines: [formatOutput(`Matrix rain ${enabled ? 'enabled' : 'disabled'}.`)],
       })
     }
 
@@ -844,7 +844,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       }
       const mode = modeValue as StoredState['matrix']['mode']
       nextState = { ...state, matrix: { ...state.matrix, mode } }
-      outputs.push({ lines: [formatStory(`Matrix mode set to ${mode}.`)] })
+      outputs.push({ lines: [formatOutput(`Matrix mode set to ${mode}.`)] })
     }
 
     if (parsed.id === 'matrix-speed') {
@@ -860,7 +860,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       }
       const speedValue = Number(clampRange(value, 1, 5).toFixed(2))
       nextState = { ...state, matrix: { ...state.matrix, speed: speedValue } }
-      outputs.push({ lines: [formatStory(`Matrix speed set to ${speedValue}.`)] })
+      outputs.push({ lines: [formatOutput(`Matrix speed set to ${speedValue}.`)] })
     }
 
     if (parsed.id === 'matrix-density') {
@@ -876,7 +876,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       }
       const densityValue = Number(clampRange(value, 1, 5).toFixed(2))
       nextState = { ...state, matrix: { ...state.matrix, density: densityValue } }
-      outputs.push({ lines: [formatStory(`Matrix density set to ${densityValue}.`)] })
+      outputs.push({ lines: [formatOutput(`Matrix density set to ${densityValue}.`)] })
     }
 
     return {
@@ -911,36 +911,30 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     nextState.agentConfig.initialized = true
     nextState.agentConfig.built = false
     nextState.runtimeOpen = false
-    outputs.push({
-      lines: [
-        formatStory('Scaffolding workspace...'),
-        formatStory('Created: agent.config.json'),
-        formatStory('Created: prompts/system.txt'),
-        formatStory('Created: runtime/preview.stub'),
-        formatStory('Subsystems online.'),
-      ],
-    })
+    outputs.push({ lines: [formatOutput('Scaffolding workspace...')], delay: 150 })
+    outputs.push({ lines: [formatOutput('Created: agent.config.json')], delay: 300 })
+    outputs.push({ lines: [formatOutput('Created: prompts/system.txt')], delay: 300 })
+    outputs.push({ lines: [formatOutput('Created: runtime/preview.stub')], delay: 300 })
+    outputs.push({ lines: [formatOutput('Subsystems online.')], delay: 250 })
   }
 
   if (parsed.id === 'set-name') {
     const name = parsed.value?.trim() ?? ''
     nextState.agentConfig.name = name || null
+    outputs.push({ lines: [formatOutput(`Name locked: ${name || 'unknown'}.`)], delay: 200 })
     outputs.push({
-      lines: [
-        formatStory(`Name locked: ${name || 'unknown'}.`),
-        formatStory(`Bundle id: ${name ? `${name}-agent` : 'unknown-agent'}.`),
-      ],
+      lines: [formatOutput(`Bundle id: ${name ? `${name}-agent` : 'unknown-agent'}.`)],
+      delay: 250,
     })
   }
 
   if (parsed.id === 'set-task') {
     const task = parsed.value?.trim() ?? ''
     nextState.agentConfig.task = task || null
+    outputs.push({ lines: [formatOutput(`Mission profile: ${task || 'unknown'}.`)], delay: 200 })
     outputs.push({
-      lines: [
-        formatStory(`Mission profile: ${task || 'unknown'}.`),
-        formatStory('Prompt template updated in prompts/system.txt.'),
-      ],
+      lines: [formatOutput('Prompt template updated in prompts/system.txt.')],
+      delay: 300,
     })
   }
 
@@ -948,15 +942,19 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     nextState.agentConfig.memory = parsed.value === 'on'
     outputs.push({
       lines: [
-        formatStory(
-          `Memory module: ${nextState.agentConfig.memory ? 'online' : 'offline'}.`,
-        ),
-        formatStory(
+        formatOutput(`Memory module: ${nextState.agentConfig.memory ? 'online' : 'offline'}.`),
+      ],
+      delay: 200,
+    })
+    outputs.push({
+      lines: [
+        formatOutput(
           nextState.agentConfig.memory
             ? 'Storage ready: memory/session.log'
             : 'Storage disabled: sessions will be stateless.',
         ),
       ],
+      delay: 300,
     })
   }
 
@@ -982,11 +980,11 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
       }
     }
 
-    outputs.push({ lines: [formatStory('Compiling agent core...')], delay: 200 })
-    outputs.push({ lines: [formatStory('Linking memory module...')], delay: 400 })
-    outputs.push({ lines: [formatStory('Bundling prompt template...')], delay: 400 })
-    outputs.push({ lines: [formatStory('Writing build output: dist/agent.bundle')], delay: 500 })
-    outputs.push({ lines: [formatStory('Build successful. Artifact created.')], delay: 300 })
+    outputs.push({ lines: [formatOutput('Compiling agent core...')], delay: 200 })
+    outputs.push({ lines: [formatOutput('Linking memory module...')], delay: 400 })
+    outputs.push({ lines: [formatOutput('Bundling prompt template...')], delay: 400 })
+    outputs.push({ lines: [formatOutput('Writing build output: dist/agent.bundle')], delay: 500 })
+    outputs.push({ lines: [formatOutput('Build successful. Artifact created.')], delay: 300 })
     nextState.agentConfig.built = true
   }
 
@@ -1000,13 +998,8 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         clearTerminal: false,
       }
     }
-    outputs.push({
-      lines: [
-        formatStory('Launching runtime preview...'),
-        formatStory('Preview bay online. Awaiting first prompt.'),
-      ],
-      delay: 200,
-    })
+    outputs.push({ lines: [formatOutput('Launching runtime preview...')], delay: 200 })
+    outputs.push({ lines: [formatOutput('Preview bay online. Awaiting first prompt.')], delay: 400 })
     nextState.runtimeOpen = true
   }
 

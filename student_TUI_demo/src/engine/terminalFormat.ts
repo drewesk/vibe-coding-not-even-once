@@ -11,6 +11,7 @@ export const formatRun = (command: string) => colorize(`Run: ${command}`, ANSI_R
 export const formatStory = (text: string) => colorize(text, ANSI_CYAN)
 export const formatAlt = (text: string) => colorize(text, ANSI_YELLOW)
 export const formatError = (text: string) => colorize(text, ANSI_RED)
+export const formatOutput = (text: string) => colorize(text, ANSI_MAGENTA)
 
 export const stripAnsi = (value: string) => value.replace(/\u001b\[[0-9;]*m/g, '')
 
