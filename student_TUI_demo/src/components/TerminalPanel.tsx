@@ -9,6 +9,42 @@ import { highlightBaseLine } from '../engine/terminalFormat'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const storyTheme = {
+  background: 'transparent',
+  foreground: '#5dffb6',
+  cursor: '#7afcff',
+  selectionBackground: '#0f2b45',
+  red: '#ff4d6d',
+  yellow: '#ffe08a',
+  cyan: '#4ff1ff',
+  brightRed: '#ff6b86',
+  brightYellow: '#fff2b2',
+  brightCyan: '#7afcff',
+}
+
+const baseTheme = {
+  background: '#002b36',
+  foreground: '#839496',
+  cursor: '#93a1a1',
+  selectionBackground: '#073642',
+  black: '#073642',
+  red: '#dc322f',
+  green: '#859900',
+  yellow: '#b58900',
+  blue: '#268bd2',
+  magenta: '#d33682',
+  cyan: '#2aa198',
+  white: '#eee8d5',
+  brightBlack: '#002b36',
+  brightRed: '#cb4b16',
+  brightGreen: '#586e75',
+  brightYellow: '#657b83',
+  brightBlue: '#839496',
+  brightMagenta: '#6c71c4',
+  brightCyan: '#93a1a1',
+  brightWhite: '#fdf6e3',
+}
+
 type TerminalPanelProps = {
   state: StoredState
   setState: Dispatch<SetStateAction<StoredState>>
@@ -49,18 +85,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       fontFamily: '"Share Tech Mono", "Fira Code", monospace',
       fontSize: 15,
       lineHeight: 1.4,
-      theme: {
-        background: 'transparent',
-        foreground: '#5dffb6',
-        cursor: '#7afcff',
-        selectionBackground: '#0f2b45',
-        red: '#ff4d6d',
-        yellow: '#ffe08a',
-        cyan: '#4ff1ff',
-        brightRed: '#ff6b86',
-        brightYellow: '#fff2b2',
-        brightCyan: '#7afcff',
-      },
+      theme: stateRef.current.mode === 'base' ? baseTheme : storyTheme,
     })
 
     const fitAddon = new FitAddon()
@@ -245,6 +270,14 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       window.removeEventListener('resize', handleResize)
     }
   }, [resetState, setState])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+    terminal.options.theme = state.mode === 'base' ? baseTheme : storyTheme
+  }, [state.mode])
 
   return (
     <section className="terminal">
