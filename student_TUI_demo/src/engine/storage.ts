@@ -14,16 +14,23 @@ export const loadStoredState = (): StoredState => {
       return defaultState
     }
     const parsed = JSON.parse(raw) as StoredState
+    const hasValidBase =
+      typeof parsed.base?.cwd === 'string' &&
+      parsed.base.cwd.trim() !== '' &&
+      parsed.base.fs &&
+      parsed.base.fs.type === 'dir'
     return {
       ...defaultState,
       ...parsed,
       agentConfig: { ...defaultState.agentConfig, ...parsed.agentConfig },
       matrix: { ...defaultState.matrix, ...parsed.matrix },
-      base: {
-        ...defaultState.base,
-        ...parsed.base,
-        fs: parsed.base?.fs ?? defaultState.base.fs,
-      },
+      base: hasValidBase
+        ? {
+            ...defaultState.base,
+            ...parsed.base,
+            fs: parsed.base.fs,
+          }
+        : defaultState.base,
     }
   } catch (error) {
     console.warn('Failed to load saved state', error)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { StoredState } from '../types'
 import { defaultState } from './state'
 import { loadStoredState, saveStoredState } from './storage'
@@ -10,10 +10,10 @@ export const useAppState = () => {
     saveStoredState(state)
   }, [state])
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setState(defaultState)
     saveStoredState(defaultState)
-  }
+  }, [setState])
 
   return { state, setState, resetState }
 }

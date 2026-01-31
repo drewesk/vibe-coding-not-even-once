@@ -188,6 +188,7 @@ const matrixStatusLines = (state: StoredState) => [
 const baseCommandUsages = [
   'help',
   'mode story|base',
+  'status',
   'pwd',
   'ls [path]',
   'cd [path]',
@@ -272,6 +273,15 @@ const planBaseCommand = (command: string, state: StoredState): CommandPlan => {
   const hydratedState = normalizeBaseState(state)
   const tokens = tokenize(trimmed)
   if (tokens.length === 0) {
+    if (trimmed !== '') {
+      return {
+        nextState: hydratedState,
+        outputs: [{ lines: [formatError('Command parse failed. Try again.')] }],
+        showStoryPrompt: false,
+        resetTerminal: false,
+        clearTerminal: false,
+      }
+    }
     return {
       nextState: hydratedState,
       outputs: [],
@@ -318,6 +328,15 @@ const planBaseCommand = (command: string, state: StoredState): CommandPlan => {
   if (verb === 'help') {
     outputs.push({ lines: baseHelpLines.map((line) => formatAlt(line)) })
     outputs.push({ lines: [formatAlt('Tip: mode story to return to training.')] })
+    return finalize()
+  }
+
+  if (verb === 'status') {
+    const root = getNodeAtPath(nextFs, '/')
+    const rootCount = root && root.type === 'dir' ? Object.keys(root.children).length : 0
+    outputs.push({ lines: [formatAlt(`cwd: ${nextCwd || DEFAULT_HOME}`)] })
+    outputs.push({ lines: [formatAlt(`root entries: ${rootCount}`)] })
+    outputs.push({ lines: [formatAlt('base fs: ready')] })
     return finalize()
   }
 

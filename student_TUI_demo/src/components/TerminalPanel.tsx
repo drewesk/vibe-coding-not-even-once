@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { StoredState } from '../types'
 import { getStoryStep } from '../engine/story'
 import { planCommand } from '../engine/commandEngine'
+import { highlightBaseLine } from '../engine/terminalFormat'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -21,6 +22,10 @@ const isPrintable = (data: string) => {
 
 const getPrompt = (state: StoredState) =>
   state.mode === 'base' ? `base:${state.base.cwd}$ ` : 'story> '
+
+const isSystemLine = (line: string) => line.includes('<system-') || line.includes('</system-')
+
+const filterSystemLines = (lines: string[]) => lines.filter((line) => !isSystemLine(line))
 
 const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -70,10 +75,27 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     const handleResize = () => fitAddon.fit()
     window.addEventListener('resize', handleResize)
 
-    const scrollToBottom = () => terminal.scrollToBottom()
+    const scrollToBottom = () => {
+      try {
+        if (!terminal.element) {
+          return
+        }
+        terminal.scrollToBottom()
+      } catch (error) {
+        console.warn('[Terminal] scroll failed', error)
+      }
+    }
 
     const writeLine = (line: string) => {
-      terminal.writeln(line)
+      if (isSystemLine(line)) {
+        return
+      }
+      if (stateRef.current.mode === 'base') {
+        const normalized = highlightBaseLine(line)
+        terminal.write(`${normalized}\r\n`)
+      } else {
+        terminal.writeln(line)
+      }
       scrollToBottom()
     }
 
@@ -104,8 +126,9 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
 
     const renderStoryPrompt = async (storyIndex: number) => {
       const step = getStoryStep(storyIndex)
-      if (step.promptLines.length > 0) {
-        await streamLines(step.promptLines, 12, 220)
+      const promptLines = filterSystemLines(step.promptLines)
+      if (promptLines.length > 0) {
+        await streamLines(promptLines, 12, 220)
       }
       writePrompt()
     }
@@ -114,11 +137,25 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       const plan = planCommand(command, stateRef.current)
       const nextStep = getStoryStep(plan.nextState.storyIndex)
 
+      if (fitAddonRef.current) {
+        fitAddonRef.current.fit()
+      }
+
+      const isStoryAdvance =
+        plan.showStoryPrompt &&
+        plan.nextState.mode === 'story' &&
+        plan.nextState.storyIndex !== stateRef.current.storyIndex
+      const didModeChange = plan.nextState.mode !== stateRef.current.mode
+
       if (plan.resetTerminal) {
         terminal.reset()
         resetState()
         stateRef.current = plan.nextState
+      } else if (didModeChange) {
+        terminal.clear()
       } else if (plan.clearTerminal) {
+        terminal.clear()
+      } else if (isStoryAdvance) {
         terminal.clear()
       } else if (plan.showStoryPrompt) {
         const promptLines = nextStep.promptLines.length
@@ -132,14 +169,18 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         if (output.delay) {
           await sleep(output.delay)
         }
+        const lines = filterSystemLines(output.lines)
+        if (lines.length === 0) {
+          continue
+        }
         if (output.stream) {
           await streamLines(
-            output.lines,
+            lines,
             output.charDelay ?? 16,
             output.lineDelay ?? 200,
           )
         } else {
-          output.lines.forEach((line) => writeLine(line))
+          lines.forEach((line) => writeLine(line))
         }
       }
 
