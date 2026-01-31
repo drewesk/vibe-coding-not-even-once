@@ -1,12 +1,4 @@
-const ANSI_RESET = '\u001b[0m'
-const ANSI_RED = '\u001b[31m'
-const ANSI_CYAN = '\u001b[36m'
-const ANSI_YELLOW = '\u001b[93m'
-
-const colorize = (value: string, color: string) => `${color}${value}${ANSI_RESET}`
-const formatRun = (command: string) => colorize(`Run: ${command}`, ANSI_RED)
-const formatStory = (text: string) => colorize(text, ANSI_CYAN)
-const formatAlt = (text: string) => colorize(text, ANSI_YELLOW)
+import { formatAlt, formatRun, formatStory } from './terminalFormat'
 
 export type StoryStep = {
   id: string

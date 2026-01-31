@@ -1,4 +1,5 @@
 import type { AgentConfig, StoredState } from '../types'
+import { createDefaultBaseFs, DEFAULT_HOME } from './baseFs'
 
 export const defaultAgentConfig: AgentConfig = {
   initialized: false,
@@ -18,5 +19,10 @@ export const defaultState: StoredState = {
     mode: 'calm',
     speed: 2,
     density: 2,
+  },
+  mode: 'story',
+  base: {
+    cwd: DEFAULT_HOME,
+    fs: createDefaultBaseFs(),
   },
 }

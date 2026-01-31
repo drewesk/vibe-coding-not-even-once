@@ -15,6 +15,25 @@ export type MatrixSettings = {
   density: number
 }
 
+export type Mode = 'story' | 'base'
+
+export type BaseFsNode =
+  | {
+      type: 'dir'
+      name: string
+      children: Record<string, BaseFsNode>
+    }
+  | {
+      type: 'file'
+      name: string
+      content: string
+    }
+
+export type BaseState = {
+  cwd: string
+  fs: BaseFsNode
+}
+
 export type ChatMessage = {
   role: 'user' | 'agent'
   content: string
@@ -26,4 +45,6 @@ export type StoredState = {
   runtimeOpen: boolean
   messages: ChatMessage[]
   matrix: MatrixSettings
+  mode: Mode
+  base: BaseState
 }

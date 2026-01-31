@@ -6,8 +6,6 @@ import type { StoredState } from '../types'
 import { getStoryStep } from '../engine/story'
 import { planCommand } from '../engine/commandEngine'
 
-const PROMPT = '> '
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 type TerminalPanelProps = {
@@ -20,6 +18,9 @@ const isPrintable = (data: string) => {
   const code = data.charCodeAt(0)
   return code >= 32 && code <= 126
 }
+
+const getPrompt = (state: StoredState) =>
+  state.mode === 'base' ? `base:${state.base.cwd}$ ` : 'story> '
 
 const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -97,7 +98,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     }
 
     const writePrompt = () => {
-      terminal.write(PROMPT)
+      terminal.write(getPrompt(stateRef.current))
       scrollToBottom()
     }
 
@@ -117,6 +118,8 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         terminal.reset()
         resetState()
         stateRef.current = plan.nextState
+      } else if (plan.clearTerminal) {
+        terminal.clear()
       } else if (plan.showStoryPrompt) {
         const promptLines = nextStep.promptLines.length
         const isFullScreen = promptLines >= Math.max(terminal.rows - 2, 0)
@@ -145,7 +148,7 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
         stateRef.current = plan.nextState
       }
 
-      if (plan.showStoryPrompt) {
+      if (plan.showStoryPrompt && plan.nextState.mode === 'story') {
         await renderStoryPrompt(plan.nextState.storyIndex)
       } else {
         writePrompt()
@@ -189,7 +192,11 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
 
     const dispose = terminal.onData(onData)
 
-    renderStoryPrompt(stateRef.current.storyIndex)
+    if (stateRef.current.mode === 'story') {
+      renderStoryPrompt(stateRef.current.storyIndex)
+    } else {
+      writePrompt()
+    }
 
     return () => {
       dispose.dispose()
@@ -205,7 +212,9 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
           <span className="terminal__title">AgentCLI</span>
           <span className="terminal__version">v1.0</span>
         </div>
-        <div className="terminal__status">Story mode online</div>
+        <div className="terminal__status">
+          {state.mode === 'story' ? 'Story mode online' : 'Base mode online'}
+        </div>
       </div>
       <div className="terminal__body">
         <div className="terminal__xterm" ref={containerRef} />
