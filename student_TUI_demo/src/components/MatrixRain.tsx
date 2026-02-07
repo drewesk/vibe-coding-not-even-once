@@ -13,7 +13,7 @@ const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*+-'
 
 const modeConfig: Record<MatrixMode, { trail: number; speed: number; density: number }> = {
   calm: { trail: 0.08, speed: 0.75, density: 0.7 },
-  pulse: { trail: 0.12, speed: 1, density: 1 },
+  pulse: { trail: 0.14, speed: 1.15, density: 1.1 },
   storm: { trail: 0.18, speed: 1.35, density: 1.2 },
 }
 
@@ -47,7 +47,7 @@ const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProp
       return
     }
 
-    const fontSize = 14
+    const fontSize = 30
 
     const rebuildDrops = (densityValue: number) => {
       const { columns } = dimensionsRef.current
@@ -61,7 +61,12 @@ const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProp
         return
       }
       const width = parent.clientWidth
-      const height = parent.clientHeight
+      const scrollHeight = Math.max(
+        parent.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+      )
+      const height = Math.max(parent.clientHeight, scrollHeight)
       if (!width || !height) {
         return
       }
@@ -114,7 +119,7 @@ const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProp
       return
     }
 
-    const fontSize = 14
+    const fontSize = 30
     let lastDensity = -1
     let lastMode: MatrixMode = 'calm'
     let wasEnabled = false
@@ -152,7 +157,7 @@ const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProp
       const speedValue = clampRange(currentSpeed, 1, 5)
       const speedScale = (0.35 + speedValue * 0.18) * config.speed
       const [r, g, b] = modeColor[currentMode]
-      const pulse = currentMode === 'pulse' ? 0.6 + 0.4 * Math.sin(time / 520) : 1
+      const pulse = currentMode === 'pulse' ? 0.6 + 0.4 * Math.sin(time / 420) : 1
 
       ctx.fillStyle = `rgba(5, 11, 19, ${config.trail})`
       ctx.fillRect(0, 0, width, height)
@@ -160,16 +165,29 @@ const MatrixRain = ({ enabled, mode, speed, density, className }: MatrixRainProp
       ctx.textBaseline = 'top'
 
       for (let column = 0; column < columns; column += 1) {
-        if (!activeRef.current[column]) {
+        const wave = currentMode === 'pulse' ? (Math.sin(time / 360 + column * 0.25) + 1) / 2 : 0
+        const waveBoost = currentMode === 'pulse' && wave > 0.55
+        if (!activeRef.current[column] && !waveBoost) {
           continue
         }
         const drop = dropsRef.current[column]
         const x = column * fontSize
         const y = drop * fontSize
         const glyph = glyphs[Math.floor(Math.random() * glyphs.length)]
-        const alpha = (0.55 + Math.random() * 0.4) * pulse
+        const alpha = (0.55 + Math.random() * 0.4) * pulse * (currentMode === 'pulse' ? 0.85 + wave * 0.4 : 1)
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`
         ctx.fillText(glyph, x, y)
+
+        if (currentMode === 'pulse') {
+          const extraLines = wave > 0.8 ? 2 : wave > 0.65 ? 1 : 0
+          for (let i = 1; i <= extraLines; i += 1) {
+            const offset = i * fontSize * 2
+            const extraGlyph = glyphs[Math.floor(Math.random() * glyphs.length)]
+            const extraAlpha = alpha * (0.7 - i * 0.15)
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${extraAlpha})`
+            ctx.fillText(extraGlyph, x, y - offset)
+          }
+        }
 
         if (y > height && Math.random() > 0.975) {
           dropsRef.current[column] = Math.random() * -20

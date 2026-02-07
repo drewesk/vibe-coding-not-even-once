@@ -3,6 +3,7 @@ import TerminalPanel from './components/TerminalPanel'
 import PreviewPanel from './components/PreviewPanel'
 import { useAppState } from './engine/useAppState'
 import MatrixRain from './components/MatrixRain'
+import StrudelPanel from './components/StrudelPanel'
 
 function App() {
   const { state, setState, resetState } = useAppState()
@@ -27,6 +28,7 @@ function App() {
         <TerminalPanel state={state} setState={setState} resetState={resetState} />
         <PreviewPanel state={state} setState={setState} />
       </main>
+      <StrudelPanel />
     </div>
   )
 }
