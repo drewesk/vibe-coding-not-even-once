@@ -4,7 +4,7 @@ const StrudelPanel = () => {
       <header className="strudel-panel__header">
         <div>
           <span className="strudel-panel__title">Strudel Sandbox</span>
-          <span className="strudel-panel__subtitle">Full REPL (iframe)</span>
+          <span className="strudel-panel__subtitle">Full REPL</span>
         </div>
         <div className="strudel-panel__badge">Live Music</div>
       </header>
