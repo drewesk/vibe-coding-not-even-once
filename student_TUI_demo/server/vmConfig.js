@@ -16,7 +16,7 @@ export const vmConfigs = {
     host: '45.79.139.72',  // ✓ CONFIGURED
     port: 22,
     username: 'student',
-    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/root/.ssh/student_vms'
+    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/Users/user/.ssh/student_vms'
   },
   vm2: {
     id: 'vm2',
@@ -24,7 +24,7 @@ export const vmConfigs = {
     host: '45.79.139.163',  // ✓ CONFIGURED
     port: 22,
     username: 'student',
-    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/root/.ssh/student_vms'
+    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/Users/user/.ssh/student_vms'
   },
   vm3: {
     id: 'vm3',
@@ -32,7 +32,7 @@ export const vmConfigs = {
     host: '69.164.214.31',  // ✓ CONFIGURED
     port: 22,
     username: 'student',
-    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/root/.ssh/student_vms'
+    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/Users/user/.ssh/student_vms'
   },
   vm4: {
     id: 'vm4',
@@ -40,7 +40,7 @@ export const vmConfigs = {
     host: '69.164.214.88',  // ✓ CONFIGURED
     port: 22,
     username: 'student',
-    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/root/.ssh/student_vms'
+    privateKeyPath: process.env.SSH_PRIVATE_KEY_PATH || '/Users/user/.ssh/student_vms'
   }
 }
 

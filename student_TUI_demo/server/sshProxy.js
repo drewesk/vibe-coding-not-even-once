@@ -135,13 +135,14 @@ export class SSHProxy {
           port: config.port,
           username: config.username,
           privateKey: privateKey,
-          readyTimeout: 10000,
+          readyTimeout: 30000,
           keepaliveInterval: 10000,
           keepaliveCountMax: 3,
           // Accept any host key (for test environments)
           // In production, you should verify host keys
+          hostVerifier: () => true,
           algorithms: {
-            serverHostKey: ['ssh-rsa', 'ssh-ed25519', 'ecdsa-sha2-nistp256']
+            serverHostKey: ['ssh-rsa', 'ssh-ed25519', 'ecdsa-sha2-nistp256', 'rsa-sha2-256', 'rsa-sha2-512']
           }
         })
       } catch (error) {
