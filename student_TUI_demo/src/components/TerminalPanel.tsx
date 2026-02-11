@@ -7,6 +7,8 @@ import { getStoryStep } from '../engine/story'
 import { baseCommands, planCommand } from '../engine/commandEngine'
 import { highlightBaseLine } from '../engine/terminalFormat'
 import { getNodeAtPath, resolvePath } from '../engine/baseFs'
+import { SSHClient } from '../services/sshClient'
+import { getVMList, getVMById } from '../config/vmConfig'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -44,6 +46,29 @@ const baseTheme = {
   brightMagenta: '#6c71c4',
   brightCyan: '#93a1a1',
   brightWhite: '#fdf6e3',
+}
+
+const vmTheme = {
+  background: '#1a1a2e',
+  foreground: '#16c79a',
+  cursor: '#19d3da',
+  selectionBackground: '#0f3460',
+  black: '#0f3460',
+  red: '#ea5455',
+  green: '#16c79a',
+  yellow: '#f9ca24',
+  blue: '#19d3da',
+  magenta: '#c44569',
+  cyan: '#16c79a',
+  white: '#f8f9fa',
+  brightBlack: '#1a1a2e',
+  brightRed: '#ff6b81',
+  brightGreen: '#19d3da',
+  brightYellow: '#ffdd59',
+  brightBlue: '#54a0ff',
+  brightMagenta: '#ee5a6f',
+  brightCyan: '#1dd1a1',
+  brightWhite: '#ffffff',
 }
 
 const MAX_HISTORY = 200
@@ -114,8 +139,15 @@ const isPrintable = (data: string) => {
   return code >= 32 && code <= 126
 }
 
-const getPrompt = (state: StoredState) =>
-  state.mode === 'base' ? `base:${state.base.cwd}$ ` : 'story> '
+const getPrompt = (state: StoredState) => {
+  if (state.mode === 'base') {
+    return `base:${state.base.cwd}$ `
+  }
+  if (state.mode === 'vm') {
+    return 'vm> '
+  }
+  return 'story> '
+}
 
 const isSystemLine = (line: string) => line.includes('<system-') || line.includes('</system-')
 
@@ -135,6 +167,8 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     index: -1,
     original: '',
   })
+  const sshClientRef = useRef<SSHClient | null>(null)
+  const vmConnectedRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -145,12 +179,18 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       return
     }
 
+    const getTheme = () => {
+      if (stateRef.current.mode === 'base') return baseTheme
+      if (stateRef.current.mode === 'vm') return vmTheme
+      return storyTheme
+    }
+
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily: '"Share Tech Mono", "Fira Code", monospace',
       fontSize: 15,
       lineHeight: 1.4,
-      theme: stateRef.current.mode === 'base' ? baseTheme : storyTheme,
+      theme: getTheme(),
     })
 
     const fitAddon = new FitAddon()
@@ -162,7 +202,13 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
 
-    const handleResize = () => fitAddon.fit()
+    const handleResize = () => {
+      fitAddon.fit()
+      // Notify SSH client of terminal size change
+      if (sshClientRef.current && vmConnectedRef.current) {
+        sshClientRef.current.resize(terminal.rows, terminal.cols)
+      }
+    }
     window.addEventListener('resize', handleResize)
 
     const scrollToBottom = () => {
@@ -226,7 +272,130 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     const handleCommand = async (command: string) => {
       const trimmedCommand = command.trim()
       const isBaseMode = stateRef.current.mode === 'base'
+      const isVMMode = stateRef.current.mode === 'vm'
       const isHistoryCommand = isBaseMode && trimmedCommand === 'history'
+
+      // Handle VM mode commands
+      if (isVMMode && !vmConnectedRef.current) {
+        // Not connected yet - handle "connect vmX" command
+        const connectMatch = trimmedCommand.match(/^connect\s+(vm\d+)$/i)
+        if (connectMatch) {
+          const vmId = connectMatch[1].toLowerCase()
+          const vm = getVMById(vmId)
+          
+          if (!vm) {
+            writeLine(`Error: Unknown VM "${vmId}"`)
+            writeLine('Available VMs: vm1, vm2, vm3, vm4, vm5, vm6, vm7, vm8')
+            writePrompt()
+            return
+          }
+
+          // Start connection sequence
+          writeLine(`Connecting to ${vm.name}...`)
+          writeLine(`Establishing SSH connection to ${vm.host}...`)
+          
+          // Update state to connecting
+          setState(prev => ({
+            ...prev,
+            vmState: {
+              connected: false,
+              selectedVM: vmId,
+              connectionStatus: 'connecting',
+              errorMessage: null,
+            }
+          }))
+          
+          await sleep(500)
+          
+          // Create SSH client
+          sshClientRef.current = new SSHClient(vmId, {
+            onData: (data) => {
+              if (typeof data === 'string') {
+                terminal.write(data)
+              } else {
+                terminal.write(data)
+              }
+            },
+            onStatus: (status, message) => {
+              if (status === 'connected') {
+                vmConnectedRef.current = true
+                terminal.clear()
+                writeLine(`Connected to ${vm.name}`)
+                writeLine(`SSH session established.`)
+                writeLine('')
+                // Update global state
+                setState(prev => ({
+                  ...prev,
+                  vmState: {
+                    connected: true,
+                    selectedVM: vmId,
+                    connectionStatus: 'connected',
+                    errorMessage: null,
+                  }
+                }))
+                // The actual shell prompt will come from the SSH session
+              } else if (status === 'error') {
+                vmConnectedRef.current = false
+                writeLine(`Connection error: ${message || 'Unknown error'}`)
+                writePrompt()
+                // Update global state
+                setState(prev => ({
+                  ...prev,
+                  vmState: {
+                    connected: false,
+                    selectedVM: null,
+                    connectionStatus: 'error',
+                    errorMessage: message || 'Unknown error',
+                  }
+                }))
+              } else if (status === 'disconnected') {
+                vmConnectedRef.current = false
+                writeLine('')
+                writeLine('Disconnected from VM.')
+                writePrompt()
+                // Update global state
+                setState(prev => ({
+                  ...prev,
+                  vmState: {
+                    connected: false,
+                    selectedVM: null,
+                    connectionStatus: 'disconnected',
+                    errorMessage: null,
+                  }
+                }))
+              }
+            }
+          })
+          
+          sshClientRef.current.connect()
+          return
+        }
+        
+        // Show VM selection menu if not a connect command
+        if (trimmedCommand === 'help' || trimmedCommand === 'list' || trimmedCommand === '') {
+          const vmList = getVMList()
+          writeLine('Available VMs:')
+          vmList.forEach(vm => {
+            writeLine(`  ${vm.id} - ${vm.name}`)
+          })
+          writeLine('')
+          writeLine('To connect: connect <vm-id>')
+          writeLine('Example: connect vm1')
+          writePrompt()
+          return
+        }
+        
+        writeLine(`Unknown command: ${trimmedCommand}`)
+        writeLine('Type "help" to see available VMs.')
+        writePrompt()
+        return
+      }
+
+      // If in VM mode and connected, don't process commands here
+      // Input is handled directly in onData handler below
+      if (isVMMode && vmConnectedRef.current) {
+        return
+      }
 
       if (isHistoryCommand) {
         if (historyRef.current.length === 0) {
@@ -369,6 +538,34 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     }
 
     const onData = (data: string) => {
+      // If in VM mode and connected to SSH, send all data directly to SSH
+      if (stateRef.current.mode === 'vm' && vmConnectedRef.current && sshClientRef.current) {
+        // Check for "exit" command to disconnect
+        if (data === '\r' && bufferRef.current.trim() === 'exit') {
+          bufferRef.current = ''
+          terminal.write('\r\n')
+          if (sshClientRef.current) {
+            sshClientRef.current.disconnect()
+            sshClientRef.current = null
+          }
+          vmConnectedRef.current = false
+          return
+        }
+        
+        // Send all input to SSH session
+        sshClientRef.current.send(data)
+        
+        // Update local buffer for exit detection
+        if (data === '\r') {
+          bufferRef.current = ''
+        } else if (data === '\u007F') {
+          bufferRef.current = bufferRef.current.slice(0, -1)
+        } else if (isPrintable(data)) {
+          bufferRef.current += data
+        }
+        return
+      }
+
       if (busyRef.current) {
         return
       }
@@ -429,6 +626,28 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
 
     if (stateRef.current.mode === 'story') {
       renderStoryPrompt(stateRef.current.storyIndex)
+    } else if (stateRef.current.mode === 'vm') {
+      // Show VM selection menu
+      const vmList = getVMList()
+      writeLine('╔════════════════════════════════════════════╗')
+      writeLine('║        VM Terminal Mode                    ║')
+      writeLine('║  Connect to a real Linux environment       ║')
+      writeLine('╚════════════════════════════════════════════╝')
+      writeLine('')
+      writeLine('Available VMs:')
+      vmList.forEach(vm => {
+        writeLine(`  ${vm.id} - ${vm.name}`)
+      })
+      writeLine('')
+      writeLine('Commands:')
+      writeLine('  connect <vm-id>  - Connect to a VM')
+      writeLine('  help             - Show this menu')
+      writeLine('  list             - List available VMs')
+      writeLine('  exit             - Disconnect (when connected)')
+      writeLine('  mode story       - Return to story mode')
+      writeLine('  mode base        - Switch to base mode')
+      writeLine('')
+      writePrompt()
     } else {
       writePrompt()
     }
@@ -437,6 +656,12 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
       dispose.dispose()
       terminal.dispose()
       window.removeEventListener('resize', handleResize)
+      // Cleanup SSH connection if exists
+      if (sshClientRef.current) {
+        sshClientRef.current.disconnect()
+        sshClientRef.current = null
+      }
+      vmConnectedRef.current = false
     }
   }, [resetState, setState])
 
@@ -445,12 +670,29 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
     if (!terminal) {
       return
     }
-    terminal.options.theme = state.mode === 'base' ? baseTheme : storyTheme
+    
+    // Update theme based on mode
+    if (state.mode === 'base') {
+      terminal.options.theme = baseTheme
+    } else if (state.mode === 'vm') {
+      terminal.options.theme = vmTheme
+    } else {
+      terminal.options.theme = storyTheme
+    }
+    
+    // Reset autocomplete when switching modes
     autocompleteRef.current = {
       active: false,
       candidates: [],
       index: -1,
       original: '',
+    }
+    
+    // Disconnect SSH when leaving VM mode
+    if (state.mode !== 'vm' && sshClientRef.current) {
+      sshClientRef.current.disconnect()
+      sshClientRef.current = null
+      vmConnectedRef.current = false
     }
   }, [state.mode])
 
@@ -462,7 +704,9 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
           <span className="terminal__version">v1.0</span>
         </div>
         <div className="terminal__status">
-          {state.mode === 'story' ? 'Story mode online' : 'Base mode online'}
+          {state.mode === 'story' && 'Story mode online'}
+          {state.mode === 'base' && 'Base mode online'}
+          {state.mode === 'vm' && (state.vmState.connected ? `VM mode - Connected to ${state.vmState.selectedVM}` : 'VM mode online')}
         </div>
       </div>
       <div className="terminal__body">

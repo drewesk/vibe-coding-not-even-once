@@ -25,4 +25,10 @@ export const defaultState: StoredState = {
     cwd: DEFAULT_HOME,
     fs: createDefaultBaseFs(),
   },
+  vmState: {
+    connected: false,
+    selectedVM: null,
+    connectionStatus: 'disconnected',
+    errorMessage: null,
+  },
 }

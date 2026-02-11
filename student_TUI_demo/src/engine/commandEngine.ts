@@ -166,7 +166,7 @@ const helpLines = [
   ...commandDefinitions
     .filter((entry) => !entry.id.startsWith('matrix') && entry.id !== 'bonus')
     .map((entry) => entry.usage),
-  'mode story|base',
+  'mode story|base|vm',
 ]
 
 const bonusLines = [
@@ -187,7 +187,7 @@ const matrixStatusLines = (state: StoredState) => [
 
 const baseCommandUsages = [
   'help',
-  'mode story|base',
+  'mode story|base|vm',
   'status',
   'pwd',
   'ls [path]',
@@ -246,13 +246,13 @@ const parseCommand = (raw: string) => {
   return null
 }
 
-const parseModeCommand = (raw: string): 'story' | 'base' | 'invalid' | null => {
+const parseModeCommand = (raw: string): 'story' | 'base' | 'vm' | 'invalid' | null => {
   const normalized = raw.trim().toLowerCase()
   if (!normalized.startsWith('mode ')) {
     return null
   }
   const value = normalized.slice('mode '.length).trim()
-  if (value === 'story' || value === 'base') {
+  if (value === 'story' || value === 'base' || value === 'vm') {
     return value
   }
   return 'invalid'
@@ -669,7 +669,7 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
     if (modeRequest === 'invalid') {
       return {
         nextState: state,
-        outputs: [{ lines: [formatError('Mode must be "story" or "base".')] }],
+        outputs: [{ lines: [formatError('Mode must be "story", "base", or "vm".')] }],
         showStoryPrompt: state.mode === 'story',
         resetTerminal: false,
         clearTerminal: false,
@@ -684,6 +684,32 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
         clearTerminal: false,
       }
     }
+    
+    // Special handling for VM mode
+    if (modeRequest === 'vm') {
+      const nextState = {
+        ...state,
+        mode: 'vm' as const,
+        vmState: {
+          connected: false,
+          selectedVM: null,
+          connectionStatus: 'disconnected' as const,
+          errorMessage: null,
+        },
+      }
+      return {
+        nextState,
+        outputs: [
+          { lines: [formatAlt('Mode switched to vm.')] },
+          { lines: [formatAlt('VM terminal mode online.')] },
+          { lines: [formatAlt('Select a VM to connect to a real Linux environment.')] },
+        ],
+        showStoryPrompt: false,
+        resetTerminal: false,
+        clearTerminal: true,
+      }
+    }
+    
     const nextState = { ...state, mode: modeRequest }
     return {
       nextState,
@@ -707,6 +733,18 @@ export const planCommand = (command: string, state: StoredState): CommandPlan =>
 
   if (state.mode === 'base') {
     return planBaseCommand(trimmed, state)
+  }
+
+  if (state.mode === 'vm') {
+    // VM mode commands are handled in TerminalPanel directly
+    // This just returns empty plan since VM terminal handles SSH I/O
+    return {
+      nextState: state,
+      outputs: [],
+      showStoryPrompt: false,
+      resetTerminal: false,
+      clearTerminal: false,
+    }
   }
 
   const parsed = parseCommand(trimmed)

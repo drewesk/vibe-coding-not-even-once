@@ -34,3 +34,12 @@ dist-ssr
 .worktrees/
 .security-key
 logs/security/
+
+# Credentials and secrets
+SETUP_COMPLETE.md
+*credentials*
+*.pem
+*.key
+!*.pub
+server/.env
+.student-tui-config/

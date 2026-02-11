@@ -15,7 +15,7 @@ export type MatrixSettings = {
   density: number
 }
 
-export type Mode = 'story' | 'base'
+export type Mode = 'story' | 'base' | 'vm'
 
 export type BaseFsNode =
   | {
@@ -39,6 +39,13 @@ export type ChatMessage = {
   content: string
 }
 
+export type VMState = {
+  connected: boolean
+  selectedVM: string | null
+  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error'
+  errorMessage: string | null
+}
+
 export type StoredState = {
   agentConfig: AgentConfig
   storyIndex: number
@@ -47,4 +54,5 @@ export type StoredState = {
   matrix: MatrixSettings
   mode: Mode
   base: BaseState
+  vmState: VMState
 }
