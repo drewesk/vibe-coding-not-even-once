@@ -385,10 +385,14 @@ const TerminalPanel = ({ state, setState, resetState }: TerminalPanelProps) => {
           return
         }
         
-        writeLine(`Unknown command: ${trimmedCommand}`)
-        writeLine('Type "help" to see available VMs.')
-        writePrompt()
-        return
+        // Check if it's a mode switch command before showing error
+        if (!trimmedCommand.toLowerCase().startsWith('mode ')) {
+          writeLine(`Unknown command: ${trimmedCommand}`)
+          writeLine('Type "help" to see available VMs.')
+          writePrompt()
+          return
+        }
+        // If it's a mode command, fall through to planCommand below
       }
 
       // If in VM mode and connected, don't process commands here
