@@ -361,14 +361,14 @@ git push origin main
 					<p class="fragment fade-up" style="color: #e7ffe7; font-size: 0.85em;">Bash, ZSH, and mastering Unix</p>
 					
 					<pre class="fragment"><code class="language-bash" data-trim data-line-numbers="1-2|4-5|7-8">
-# Navigate directories
-cd ~/projects/my-app
+					# Navigate directories
+					cd ~/projects/my-app
 
-# List files with details
-ls -la
+					# List files with details
+					ls -la
 
-# Run your app
-npm start
+					# Run your app
+					npm start
 					</code></pre>
 
 					<aside class="notes">
@@ -450,17 +450,17 @@ npm start
 					</div>
 
 					<pre class="fragment" style="margin-top: 1em;"><code class="language-javascript" data-trim data-line-numbers>
-// Create audio context
-const audioCtx = new AudioContext();
-const oscillator = audioCtx.createOscillator();
+						// Create audio context
+						const audioCtx = new AudioContext();
+						const oscillator = audioCtx.createOscillator();
 
-// Set frequency (440Hz = A note)
-oscillator.frequency.value = 440;
-oscillator.connect(audioCtx.destination);
+						// Set frequency (440Hz = A note)
+						oscillator.frequency.value = 440;
+						oscillator.connect(audioCtx.destination);
 
-// Play for 1 second
-oscillator.start();
-setTimeout(() => oscillator.stop(), 1000);
+						// Play for 1 second
+						oscillator.start();
+						setTimeout(() => oscillator.stop(), 1000);
 					</code></pre>
 
 					<aside class="notes">
@@ -538,29 +538,21 @@ setTimeout(() => oscillator.stop(), 1000);
 				</section>
 
 				<section data-background-color="#1f2830">
-					<h2 style="color: #cfe6ff;">Pair Exercise: User & Engineer</h2>
+					<h2 style="color: #cfe6ff;">Prompt Engineering: Using AI to create the AI</h2>
 					<div style="color: #e7f5ff; font-size: 0.85em; margin-top: 2em;">
 						<p class="fragment fade-up">Pair up with a partner</p>
 						<p class="fragment fade-up">Take turns being the prospective user and the app engineer</p>
 						<p class="fragment fade-up">Ask each other these 4 questions:</p>
 						<ol class="fragment" style="font-size: 0.9em; margin-top: 1em;">
-							<li>What problem does this app solve?</li>
-							<li>Who is the target user?</li>
-							<li>What are the core features?</li>
-							<li>How will users benefit from using it?</li>
+							<li>Basics of Prompt Engineering</li>
+							<li>Using ChatGPT to prompt the Coding Agent</li>
+							<li>Asking the right questions</li>
+							<li>Choosing your consequences, baking in some guard rails</li>
 						</ol>
 					</div>
 
 					<aside class="notes">
-						Interactive exercise - pair up and practice thinking like both a user and an engineer.
-
-						This helps you understand both perspectives:
-						- As a user: What do I actually need?
-						- As an engineer: How can I build this effectively?
-
-						These 4 questions are fundamental to any successful app project.
-
-						Give them 5-10 minutes for this exercise.
+						Interactive exercise - pair up and practice creating a prompt, and then we'll feed it to the AI
 					</aside>
 				</section>
 
