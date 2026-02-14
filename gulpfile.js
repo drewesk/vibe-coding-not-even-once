@@ -293,6 +293,26 @@ gulp.task('package', gulp.series(async () => {
 
 }))
 
+gulp.task('build-slides', gulp.series('build', async () => {
+    
+    let dirs = [
+        './index.html',
+        './dist/**',
+        './plugin/**',
+        './*.jpg',
+        './*.png',
+        './*.gif'
+    ];
+
+    if (fs.existsSync('./lib')) dirs.push('./lib/**');
+    if (fs.existsSync('./images')) dirs.push('./images/**');
+    if (fs.existsSync('./slides')) dirs.push('./slides/**');
+
+    return gulp.src( dirs, { base: './' } )
+        .pipe(gulp.dest('./deploy'))
+
+}))
+
 gulp.task('reload', () => gulp.src(['index.html'])
     .pipe(connect.reload()));
 
